@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mumbai Flight Tracker - HUD</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- GSAP for animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+    <!-- Font Awesome for the plane icon -->
+    <script
+      src="https://kit.fontawesome.com/d9f46eda70.js"
+      crossorigin="anonymous"
+    ></script>
+
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap");
+
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: #0d0d1a;
+        overflow: hidden;
+      }
+
+      .star {
+        position: fixed;
+        background: #fff;
+        border-radius: 50%;
+        box-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px #fff;
+        animation: float-up linear infinite;
+      }
+
+      @keyframes float-up {
+        from {
+          transform: translateY(100vh);
+        }
+        to {
+          transform: translateY(-10vh);
+        }
+      }
+
+      #flying-plane {
+        position: fixed;
+        top: 30px;
+        left: 0;
+        font-size: 24px;
+        color: #4169e1;
+        opacity: 0.6;
+        transform: translateX(-100px);
+        animation: flyAcross 20s linear infinite;
+        animation-delay: 2s;
+        z-index: 50;
+      }
+
+      @keyframes flyAcross {
+        0% {
+          transform: translateX(-100px) rotate(-45deg);
+        }
+        10% {
+          transform: translateX(10vw) rotate(0deg);
+        }
+        90% {
+          transform: translateX(90vw) rotate(0deg);
+        }
+        100% {
+          transform: translateX(110vw) rotate(45deg);
+        }
+      }
+
+      .hud-element {
+        background-color: rgba(20, 20, 35, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+      }
+
+      .label {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: #a0a0a0;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      .value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #fff;
+        text-shadow: 0 0 10px rgba(65, 105, 225, 0.5);
+      }
+    </style>
+  </head>
+  <body class="text-white flex items-center justify-center min-h-screen">
+    <div id="star-container"></div>
+
+    <div id="flying-plane">
+      <i class="fa-solid fa-plane"></i>
+    </div>
+
+    <div
+      id="hud"
+      class="w-full max-w-3xl mx-auto p-4 flex flex-col items-center"
+    >
+      <h1
+        id="status-message"
+        class="text-3xl text-center font-light animate-pulse mb-8"
+      >
+        Initializing System...
+      </h1>
+
+      <div id="flight-info" class="hidden w-full flex flex-col items-center">
+        <div
+          class="hud-element w-full mb-6 text-center flex flex-col items-center"
+        >
+          <div class="flex items-center gap-4">
+            <div>
+              <span
+                id="data-airline-name"
+                class="text-2xl font-bold text-blue-300"
+                >--</span
+              >
+              <span id="data-callsign" class="value block">--</span>
+            </div>
+          </div>
+          <div class="mt-4 text-gray-300 text-lg">
+            <span id="data-origin">--</span> to Mumbai
+          </div>
+          <div class="mt-1 text-gray-400 text-sm">
+            Aircraft: <span id="data-aircraft-model">--</span>
+          </div>
+        </div>
+
+        <div class="w-full grid grid-cols-2 gap-6">
+          <div class="hud-element flex flex-col justify-center items-center">
+            <span class="label">Altitude</span>
+            <span id="data-altitude" class="value">--</span>
+          </div>
+          <div class="hud-element flex flex-col justify-center items-center">
+            <span class="label">Ground Speed</span>
+            <span id="data-speed" class="value">--</span>
+          </div>
+          <div class="hud-element flex flex-col justify-center items-center">
+            <span class="label">Heading</span>
+            <span id="data-heading" class="value">--</span>
+          </div>
+          <div class="hud-element flex flex-col justify-center items-center">
+            <span class="label">Vertical Speed</span>
+            <span id="data-vertical-rate" class="value">--</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const ui = {
+        statusMessage: document.getElementById("status-message"),
+        flightInfo: document.getElementById("flight-info"),
+        callsign: document.getElementById("data-callsign"),
+        altitude: document.getElementById("data-altitude"),
+        speed: document.getElementById("data-speed"),
+        heading: document.getElementById("data-heading"),
+        verticalRate: document.getElementById("data-vertical-rate"),
+        hud: document.getElementById("hud"),
+        airlineName: document.getElementById("data-airline-name"),
+        origin: document.getElementById("data-origin"),
+        aircraftModel: document.getElementById("data-aircraft-model"),
+        starContainer: document.getElementById("star-container"),
+      };
+
+      const BBOX = {
+        minLatitude: 19.03,
+        maxLatitude: 19.12,
+        minLongitude: 72.88,
+        maxLongitude: 73.05,
+      };
+      let focusedAircraftId = null;
+      const NORMAL_INTERVAL = 20000;
+      const RATE_LIMIT_INTERVAL = 90000;
+
+      const AIRLINE_MAP = {
+        IGO: "IndiGo",
+        VTI: "Vistara",
+        AIC: "Air India",
+        SEJ: "SpiceJet",
+        QTR: "Qatar Airways",
+        ETD: "Etihad Airways",
+        UAE: "Emirates",
+        SIA: "Singapore Airlines",
+        GOW: "Go First",
+        ALK: "SriLankan Airlines",
+        ETH: "Ethiopian Airlines",
+        MSR: "EgyptAir",
+      };
+
+      let airportDataMap = new Map();
+
+      async function loadAirportData() {
+        try {
+          const response = await fetch("./codes.csv");
+          if (!response.ok)
+            throw new Error(
+              `Failed to fetch codes.csv: ${response.statusText}`
+            );
+          const csvText = await response.text();
+          // Assumes CSV format: City,Country,Code
+          const lines = csvText.trim().split("\n").slice(1);
+
+          lines.forEach((line) => {
+            const parts = line.split(",");
+            // Handle cases where city/country might have commas
+            if (parts.length >= 3) {
+              const code = parts[parts.length - 1].trim();
+              const country = parts[parts.length - 2].trim();
+              const city = parts
+                .slice(0, parts.length - 2)
+                .join(",")
+                .trim();
+              if (code) airportDataMap.set(code, { city, country });
+            }
+          });
+          console.log(
+            `Successfully loaded ${airportDataMap.size} airports from CSV.`
+          );
+        } catch (error) {
+          console.error(
+            "Could not load airport data. Using codes only.",
+            error
+          );
+        }
+      }
+
+      function showSearchingUI() {
+        ui.statusMessage.textContent = "Searching for Aircraft...";
+        if (!ui.flightInfo.classList.contains("hidden")) {
+          gsap.to(ui.flightInfo, {
+            opacity: 0,
+            duration: 0.5,
+            onComplete: () => {
+              ui.flightInfo.classList.add("hidden");
+              ui.statusMessage.classList.remove("hidden");
+              gsap.to(ui.statusMessage, { opacity: 1, duration: 0.5 });
+            },
+          });
+        }
+      }
+
+      function updateAircraftUI(details) {
+        if (ui.flightInfo.classList.contains("hidden")) {
+          gsap.to(ui.statusMessage, {
+            opacity: 0,
+            duration: 0.5,
+            onComplete: () => {
+              ui.statusMessage.classList.add("hidden");
+              ui.flightInfo.classList.remove("hidden");
+              gsap.fromTo(
+                ui.flightInfo,
+                { opacity: 0, y: 20 },
+                { opacity: 1, y: 0, duration: 1 }
+              );
+            },
+          });
+        }
+        ui.callsign.textContent = details.callsign;
+        ui.altitude.textContent = `${Math.round(
+          details.baro_altitude * 3.28084
+        ).toLocaleString()}`;
+        ui.speed.textContent = `${Math.round(details.velocity * 1.94384)}`;
+        ui.heading.textContent = `${Math.round(details.true_track)}°`;
+        ui.verticalRate.textContent = `${Math.round(
+          details.vertical_rate * 196.85
+        )}`;
+      }
+
+      async function getExtendedDetails(icao24, callsign) {
+        const airlineCode = callsign.substring(0, 3).toUpperCase();
+        ui.airlineName.textContent = AIRLINE_MAP[airlineCode] || "Private Jet";
+
+        const now = Math.floor(Date.now() / 1000);
+        const twelveHoursAgo = now - 43200;
+        const flightsUrl = `https://opensky-network.org/api/flights/aircraft?icao24=${icao24}&begin=${twelveHoursAgo}&end=${now}`;
+        try {
+          const response = await fetch(flightsUrl);
+          const flightData = await response.json();
+          if (flightData.length > 0 && flightData[0].estDepartureAirport) {
+            const originIcao = flightData[0].estDepartureAirport;
+
+            // --- SIMPLIFIED: Direct lookup using ICAO code ---
+            const originInfo = airportDataMap.get(originIcao);
+            if (originInfo) {
+              ui.origin.textContent = `${originInfo.city}, ${originInfo.country}`;
+            } else {
+              ui.origin.textContent = originIcao; // Fallback to code if not in CSV
+            }
+          } else {
+            ui.origin.textContent = "Unknown Origin";
+          }
+        } catch (e) {
+          console.error("Error fetching flight details:", e);
+          ui.origin.textContent = "Origin Unavailable";
+        }
+
+        const aircraftDbUrl = `https://hexdb.io/api/v1/aircraft/${icao24}`;
+        try {
+          const response = await fetch(aircraftDbUrl);
+          const aircraftData = await response.json();
+          ui.aircraftModel.textContent =
+            aircraftData && aircraftData.Type ? aircraftData.Type : "N/A";
+        } catch (e) {
+          ui.aircraftModel.textContent = "N/A";
+        }
+      }
+
+      function scheduleNextFetch(delay) {
+        setTimeout(fetchAircraftData, delay);
+      }
+
+      async function fetchAircraftData() {
+        const apiUrl = `https://opensky-network.org/api/states/all?lamin=${BBOX.minLatitude}&lomin=${BBOX.minLongitude}&lamax=${BBOX.maxLatitude}&lomax=${BBOX.maxLongitude}`;
+        try {
+          const response = await fetch(apiUrl);
+          if (!response.ok) {
+            if (response.status === 429) {
+              ui.statusMessage.textContent =
+                "API Limit Reached. Cooling down...";
+              scheduleNextFetch(RATE_LIMIT_INTERVAL);
+              return;
+            }
+            throw new Error(`Network response was not ok`);
+          }
+          const data = await response.json();
+
+          if (!data.states || data.states.length === 0) {
+            showSearchingUI();
+            focusedAircraftId = null;
+          } else {
+            const aircraft = data.states[0];
+            const aircraftDetails = {
+              icao24: aircraft[0],
+              callsign: aircraft[1] ? aircraft[1].trim() : "N/A",
+              baro_altitude: aircraft[7] || 0,
+              velocity: aircraft[9] || 0,
+              true_track: aircraft[10] || 0,
+              vertical_rate: aircraft[11] || 0,
+            };
+
+            updateAircraftUI(aircraftDetails);
+
+            if (aircraftDetails.icao24 !== focusedAircraftId) {
+              focusedAircraftId = aircraftDetails.icao24;
+              ui.origin.textContent = "Loading...";
+              ui.aircraftModel.textContent = "Loading...";
+              getExtendedDetails(
+                aircraftDetails.icao24,
+                aircraftDetails.callsign
+              );
+              gsap.fromTo(
+                ui.hud,
+                { filter: "brightness(1.5)" },
+                { filter: "brightness(1)", duration: 0.5 }
+              );
+            }
+          }
+          scheduleNextFetch(NORMAL_INTERVAL);
+        } catch (error) {
+          console.error("Error fetching flight data:", error);
+          showSearchingUI();
+          scheduleNextFetch(NORMAL_INTERVAL);
+        }
+      }
+
+      function createStars() {
+        for (let i = 0; i < 50; i++) {
+          const star = document.createElement("div");
+          star.classList.add("star");
+          const size = Math.random() * 3;
+          star.style.width = `${size}px`;
+          star.style.height = `${size}px`;
+          star.style.left = `${Math.random() * 100}%`;
+          star.style.animationDuration = `${Math.random() * 10 + 5}s`;
+          star.style.animationDelay = `${Math.random() * 5}s`;
+          ui.starContainer.appendChild(star);
+        }
+      }
+
+      async function initializeApp() {
+        ui.statusMessage.textContent = "Loading Airport Data...";
+        await loadAirportData();
+        createStars();
+        fetchAircraftData();
+      }
+
+      initializeApp();
+    </script>
+  </body>
+</html>
