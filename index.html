@@ -22,7 +22,13 @@
 
       body {
         font-family: "Inter", sans-serif;
-        background-color: #0d0d1a;
+        /* NEW: Subtle radial gradient from the top */
+        background-color: #1a1a1a;
+        background-image: radial-gradient(
+          ellipse 80% 50% at 50% -20%,
+          rgba(120, 119, 198, 0.3),
+          hsla(0, 0%, 100%, 0)
+        );
         overflow: hidden;
       }
 
@@ -30,16 +36,20 @@
         position: fixed;
         background: #fff;
         border-radius: 50%;
-        box-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px #fff;
-        animation: float-up linear infinite;
+        opacity: 0; /* Start hidden */
+        animation: twinkle linear infinite;
       }
 
-      @keyframes float-up {
-        from {
-          transform: translateY(100vh);
+      /* UPDATED: Animation now only fades in and out, no movement */
+      @keyframes twinkle {
+        0% {
+          opacity: 0;
         }
-        to {
-          transform: translateY(-10vh);
+        50% {
+          opacity: 0.7;
+        }
+        100% {
+          opacity: 0;
         }
       }
 
@@ -384,15 +394,20 @@
       }
 
       function createStars() {
-        for (let i = 0; i < 50; i++) {
+        // More stars for a denser field
+        for (let i = 0; i < 150; i++) {
           const star = document.createElement("div");
           star.classList.add("star");
-          const size = Math.random() * 3;
+          // Smaller stars for a more subtle effect
+          const size = Math.random() * 1.5;
           star.style.width = `${size}px`;
           star.style.height = `${size}px`;
+          // Position randomly across the entire screen
           star.style.left = `${Math.random() * 100}%`;
-          star.style.animationDuration = `${Math.random() * 10 + 5}s`;
-          star.style.animationDelay = `${Math.random() * 5}s`;
+          star.style.top = `${Math.random() * 100}%`;
+          // Slower, more varied twinkle effect
+          star.style.animationDuration = `${Math.random() * 7 + 5}s`;
+          star.style.animationDelay = `${Math.random() * 7}s`;
           ui.starContainer.appendChild(star);
         }
       }
