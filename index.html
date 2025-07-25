@@ -208,13 +208,12 @@
             throw new Error(
               `Failed to fetch codes.csv: ${response.statusText}`
             );
+
           const csvText = await response.text();
-          // Assumes CSV format: City,Country,Code
           const lines = csvText.trim().split("\n").slice(1);
 
           lines.forEach((line) => {
             const parts = line.split(",");
-            // Handle cases where city/country might have commas
             if (parts.length >= 3) {
               const code = parts[parts.length - 1].trim();
               const country = parts[parts.length - 2].trim();
@@ -287,23 +286,32 @@
         const flightsUrl = `https://opensky-network.org/api/flights/aircraft?icao24=${icao24}&begin=${twelveHoursAgo}&end=${now}`;
         try {
           const response = await fetch(flightsUrl);
-          const flightData = await response.json();
-          if (flightData.length > 0 && flightData[0].estDepartureAirport) {
-            const originIcao = flightData[0].estDepartureAirport;
+          if (!response.ok) throw new Error("Flight history response not OK");
 
-            // --- SIMPLIFIED: Direct lookup using ICAO code ---
+          const flightData = await response.json();
+          if (
+            flightData &&
+            flightData.length > 0 &&
+            flightData[0].estDepartureAirport
+          ) {
+            const originIcao = flightData[0].estDepartureAirport;
             const originInfo = airportDataMap.get(originIcao);
+
+            // This is the updated logic as per your request
             if (originInfo) {
+              // If we find the code in our CSV, display the full name.
               ui.origin.textContent = `${originInfo.city}, ${originInfo.country}`;
             } else {
-              ui.origin.textContent = originIcao; // Fallback to code if not in CSV
+              // If the code is NOT in our CSV, display the code itself as a fallback.
+              ui.origin.textContent = originIcao;
             }
           } else {
-            ui.origin.textContent = "Unknown Origin";
+            // If the API doesn't report an origin airport for this flight, we state that.
+            ui.origin.textContent = "Origin Not Reported";
           }
         } catch (e) {
           console.error("Error fetching flight details:", e);
-          ui.origin.textContent = "Origin Unavailable";
+          ui.origin.textContent = "Origin API Error";
         }
 
         const aircraftDbUrl = `https://hexdb.io/api/v1/aircraft/${icao24}`;
