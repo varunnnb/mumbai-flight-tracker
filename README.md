@@ -1,4 +1,3 @@
-<img width="1680" height="800" alt="Screenshot (111)" src="https://github.com/user-attachments/assets/4ca0449c-7485-4e87-83d1-ee64d458c115" /># Mumbai Flight Tracker - HUD
 
 A real-time Heads-Up Display (HUD) web application that visually tracks aircraft near Mumbai Airport, fetching live data from the OpenSky Network API and displaying it with smooth animations and a futuristic interface.
 
