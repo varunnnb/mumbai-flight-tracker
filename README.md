@@ -1,4 +1,4 @@
-# Mumbai Flight Tracker - HUD
+<img width="1680" height="800" alt="Screenshot (111)" src="https://github.com/user-attachments/assets/4ca0449c-7485-4e87-83d1-ee64d458c115" /># Mumbai Flight Tracker - HUD
 
 A real-time Heads-Up Display (HUD) web application that visually tracks aircraft near Mumbai Airport, fetching live data from the OpenSky Network API and displaying it with smooth animations and a futuristic interface.
 
@@ -61,7 +61,11 @@ The design replicates a futuristic HUD (Heads-Up Display) using GSAP animations,
 Visit the live deployed version here:  
 [https://mumbai-flight.netlify.app/](https://mumbai-flight.netlify.app/)
 
-_Screenshot suggestion: Add an image of your HUD interface here once available._
+
+<img width="1680" height="795" alt="Screenshot (176)" src="https://github.com/user-attachments/assets/3b390884-37a9-466a-82b4-75c4e7c89486" />
+
+<img width="1680" height="800" alt="Screenshot (111)" src="https://github.com/user-attachments/assets/4cd9ea92-0d47-4cfb-b3b8-798e6e1c74bf" />
+
 
 ---
 
